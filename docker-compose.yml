@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mslocations-mysql
+    env_file:
+      - .env
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - mslocations-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mslocations-app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    environment:
+      - DATABASE_HOST=mysql
+      - DATABASE_PORT=3306
+      - DATABASE_NAME=${DATABASE_NAME}
+      - DATABASE_USER=${DATABASE_USER}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD}
+    volumes:
+      # mount a local config directory if you want to override properties
+      - ./src/main/resources:/app/config:ro
+    restart: on-failure
+    networks:
+      - mslocations-network
+
+volumes:
+  mysql-data:
+
+networks:
+  mslocations-network:
+    driver: bridge
